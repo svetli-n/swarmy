@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/svetli-n/swarmy/stats"
 )
 
 const (
@@ -15,44 +17,57 @@ const (
 )
 
 type Task interface {
-	Request() (string, time.Duration)
+	Request(chan bool, chan<- map[string]time.Duration) (string, time.Duration)
 }
 
 type HttpTask struct {
 	name, url, data string
 }
 
-type User struct {
+type WebUser struct {
 	tasks []Task
 }
 
-func (t HttpTask) Request() (string, time.Duration) {
-	req, err := http.NewRequest("POST", t.url, bytes.NewBuffer([]byte(t.data)))
-	if err != nil {
-		log.Fatal("Request error: ", err)
+func (t HttpTask) Request(stop chan bool, times chan<- map[string]time.Duration) (string, time.Duration) {
+	for {
+		select {
+		case <-stop:
+			fmt.Println("Stopping")
+			return "", 0
+		default:
+			req, err := http.NewRequest("POST", t.url, bytes.NewBuffer([]byte(t.data)))
+			if err != nil {
+				log.Fatal("Request error: ", err)
+			}
+			req.Header.Add("If-None-Match", `W/"wyzzy"`)
+			client := &http.Client{}
+			start := time.Now()
+			resp, err := client.Do(req)
+			_ = resp
+			if err != nil {
+				log.Fatal("Request error: ", err)
+			}
+			times <- map[string]time.Duration{t.name: time.Since(start)}
+			time.Sleep(time.Second * 1)
+		}
 	}
-	req.Header.Add("If-None-Match", `W/"wyzzy"`)
-	client := &http.Client{}
-	start := time.Now()
-	resp, err := client.Do(req)
-	defer resp.Body.Close()
-	if err != nil {
-		log.Fatal("Request error: ", err)
-	}
-	return t.name, time.Since(start)
 }
 
-func (u User) RunTasks() {
+func (u WebUser) RunTasks(stop chan bool) {
+	times := make(chan map[string]time.Duration)
+	stats := stats.Stats{}
+	go stats.Collect(stop, times)
 	for _, t := range u.tasks {
-		fmt.Println(t.Request())
+		go t.Request(stop, times)
 	}
 }
 
-func Run(host string, numUsers int) {
-	url := host + "/test_data/_search"
+func Run(host string, numUsers int, stop chan bool) {
+	path := "/test_data/_search"
+	url := host + path
 	task1 := HttpTask{"Task 1", url, query1}
 	task2 := HttpTask{"Task 2", url, query2}
-	user := User{[]Task{task1, task2}}
-	user.RunTasks()
+	u := WebUser{[]Task{task1, task2}}
+	u.RunTasks(stop)
 
 }
