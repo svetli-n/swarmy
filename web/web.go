@@ -10,11 +10,13 @@ import (
 	"github.com/svetli-n/swarmy/runner"
 )
 
-var Host string
-var runningTest bool
-var stop = make(chan bool)
+type Runner struct {
+	Host        string
+	runningTest bool
+	stop        chan bool
+}
 
-func webHandler(w http.ResponseWriter, r *http.Request) {
+func (ru *Runner) webHandler(w http.ResponseWriter, r *http.Request) {
 	if numUsers := r.FormValue("numUsers"); numUsers != "" {
 		n, err := strconv.Atoi(numUsers)
 		if err != nil {
@@ -25,15 +27,16 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal("runTest error.", err)
 		}
 		if runTest {
-			if !runningTest {
+			if !ru.runningTest {
+				ru.stop = make(chan bool)
 				fmt.Println("runTest, !runningTest")
-				runner.Run(Host, n, stop)
-				runningTest = true
+				runner.Run(ru.Host, n, ru.stop)
+				ru.runningTest = true
 			}
 		} else {
-			if runningTest {
+			if ru.runningTest {
 				fmt.Println("Stop")
-				close(stop)
+				close(ru.stop)
 			}
 		}
 	} else {
@@ -42,7 +45,7 @@ func webHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func Run() {
-	http.HandleFunc("/", webHandler)
+func (ru *Runner) Run() {
+	http.HandleFunc("/", ru.webHandler)
 	http.ListenAndServe(":9999", nil)
 }

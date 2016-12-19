@@ -2,22 +2,14 @@ package main
 
 import (
 	"flag"
-	"log"
 
 	"github.com/svetli-n/swarmy/web"
 )
 
-var host string
-
-func init() {
-	flag.StringVar(&host, "host", "", "Host to run test aginst")
-	flag.Parse()
-	if host == "" {
-		log.Fatal("No host name")
-	}
-}
+var host = flag.String("host", "", "Host to run test aginst")
 
 func main() {
-	web.Host = host
-	web.Run()
+	flag.Parse()
+	runner := web.Runner{Host: *host}
+	runner.Run()
 }
