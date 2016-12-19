@@ -10,13 +10,13 @@ import (
 	"github.com/svetli-n/swarmy/runner"
 )
 
-type Runner struct {
-	Host        string
+type webRunner struct {
+	host        string
 	runningTest bool
 	stop        chan bool
 }
 
-func (ru *Runner) webHandler(w http.ResponseWriter, r *http.Request) {
+func (wr *webRunner) webHandler(w http.ResponseWriter, r *http.Request) {
 	if numUsers := r.FormValue("numUsers"); numUsers != "" {
 		n, err := strconv.Atoi(numUsers)
 		if err != nil {
@@ -27,16 +27,17 @@ func (ru *Runner) webHandler(w http.ResponseWriter, r *http.Request) {
 			log.Fatal("runTest error.", err)
 		}
 		if runTest {
-			if !ru.runningTest {
-				ru.stop = make(chan bool)
+			if !wr.runningTest {
+				wr.stop = make(chan bool)
 				fmt.Println("runTest, !runningTest")
-				runner.Run(ru.Host, n, ru.stop)
-				ru.runningTest = true
+				runner.Run(wr.host, n, wr.stop)
+				wr.runningTest = true
 			}
 		} else {
-			if ru.runningTest {
+			if wr.runningTest {
 				fmt.Println("Stop")
-				close(ru.stop)
+				close(wr.stop)
+				wr.runningTest = false
 			}
 		}
 	} else {
@@ -45,7 +46,22 @@ func (ru *Runner) webHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (ru *Runner) Run() {
-	http.HandleFunc("/", ru.webHandler)
-	http.ListenAndServe(":9999", nil)
+func (wr *webRunner) start() error {
+	http.HandleFunc("/", wr.webHandler)
+	return http.ListenAndServe(":9999", nil)
+}
+
+func makeWebRunner(host string) *webRunner {
+	return &webRunner{host: host}
+}
+
+func handleError(err error) error {
+	if err != nil {
+		log.Printf("Web error", err)
+	}
+	return err
+}
+
+func Run(host string) error {
+	return handleError(makeWebRunner(host).start())
 }
