@@ -22,3 +22,8 @@ func (u WebUser) runTasks(stop chan bool) {
 		go t.Request(stop, times)
 	}
 }
+
+func makeUser(host string) User {
+	tasks := makeTasks(host)
+	return WebUser{tasks}
+}
