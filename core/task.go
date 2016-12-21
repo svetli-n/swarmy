@@ -1,4 +1,4 @@
-package runner
+package core
 
 import (
 	"fmt"
@@ -10,7 +10,8 @@ type Task interface {
 }
 
 type HttpTask struct {
-	name, url, data string
+	Name, Url, Data string
+	F               func(string, string, string)
 }
 
 func (t HttpTask) Request(stop chan bool, times chan<- map[string]time.Duration) (string, time.Duration) {
@@ -21,8 +22,8 @@ func (t HttpTask) Request(stop chan bool, times chan<- map[string]time.Duration)
 			return "", 0
 		default:
 			start := time.Now()
-			makeRequest(t.name, t.url, t.data)
-			times <- map[string]time.Duration{t.name: time.Since(start)}
+			t.F(t.Name, t.Url, t.Data)
+			times <- map[string]time.Duration{t.Name: time.Since(start)}
 			time.Sleep(time.Second * 1)
 		}
 	}
