@@ -1,9 +1,7 @@
 package runner
 
 import (
-	"bytes"
-	"log"
-	"net/http"
+	"github.com/svetli-n/swarmy/requests"
 )
 
 const (
@@ -14,17 +12,7 @@ const (
 )
 
 func makeRequest(name, url, data string) {
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer([]byte(data)))
-	if err != nil {
-		log.Fatal("Request error: ", err)
-	}
-	req.Header.Add("If-None-Match", `W/"wyzzy"`)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	_ = resp
-	if err != nil {
-		log.Fatal("Request error: ", err)
-	}
+	requests.Post(name, url, data)
 }
 
 func makeTasks(host string) []Task {
