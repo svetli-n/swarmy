@@ -29,7 +29,7 @@ func (wr *webRunner) webHandler(w http.ResponseWriter, r *http.Request) {
 		if runTest {
 			if !wr.runningTest {
 				wr.stop = make(chan bool)
-				fmt.Println("runTest, !runningTest")
+				fmt.Println("Running")
 				runner.Run(wr.host, n, wr.stop)
 				wr.runningTest = true
 			}
